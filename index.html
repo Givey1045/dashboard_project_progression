@@ -1134,15 +1134,38 @@ function setModalStatus(msg, color = 'var(--muted)') {
   if (el) { el.textContent = msg; el.style.color = color; }
 }
 async function saveSettings() {
-  const key = document.getElementById('apiKeyInput').value.trim();
+  // Sanitize key — trim whitespace and any stray newlines
+  const raw = document.getElementById('apiKeyInput').value;
+  const key = raw.replace(/\s+/g, '').trim();
   if (!key) { setModalStatus('⚠ Paste your API Key first.', 'var(--accent3)'); return; }
+  if (!key.startsWith('$2a$')) { setModalStatus('⚠ Key should start with $2a$ — check you copied the Master Key.', 'var(--accent3)'); return; }
   apiKey = key;
   const btn = document.getElementById('connectBtn');
-  btn.textContent = 'Working…'; btn.disabled = true;
-  setModalStatus('Connecting…', 'var(--accent2)');
-  const existingBin = document.getElementById('binIdInput').value.trim();
+  btn.textContent = 'Verifying key…'; btn.disabled = true;
+  setModalStatus('Verifying API key…', 'var(--accent2)');
+
+  // Step 1: Verify key works by fetching user bins list
+  try {
+    const testRes = await fetch('https://api.jsonbin.io/v3/b?sortBy=createdAt&sortOrder=desc', {
+      headers: { 'X-Access-Key': apiKey }
+    });
+    if (!testRes.ok) {
+      const errData = await testRes.json().catch(() => ({}));
+      throw new Error(errData.message || 'Invalid key (status ' + testRes.status + ')');
+    }
+    setModalStatus('✓ Key verified!', 'var(--accent)');
+  } catch(e) {
+    setModalStatus('✗ Key error: ' + e.message, 'var(--accent3)');
+    btn.textContent = 'Connect JSONBin'; btn.disabled = false; return;
+  }
+
+  const existingBin = document.getElementById('binIdInput').value.replace(/\s+/g,'').trim();
   if (existingBin) binId = existingBin;
+
+  // Step 2: Create bin if needed
   if (!binId) {
+    btn.textContent = 'Creating bin…';
+    setModalStatus('Creating your bin…', 'var(--accent2)');
     try {
       const res = await fetch('https://api.jsonbin.io/v3/b', {
         method: 'POST',
@@ -1153,15 +1176,17 @@ async function saveSettings() {
       if (!res.ok) throw new Error(data.message || res.status);
       binId = data.metadata.id;
       localStorage.setItem('ci_binId', binId);
-      setModalStatus('✓ Bin created: ' + binId, 'var(--accent)');
+      setModalStatus('✓ Bin created! ID: ' + binId, 'var(--accent)');
+      document.getElementById('binIdInput').value = binId;
     } catch(e) {
-      setModalStatus('✗ ' + e.message, 'var(--accent3)');
+      setModalStatus('✗ Bin error: ' + e.message, 'var(--accent3)');
       btn.textContent = 'Connect JSONBin'; btn.disabled = false; return;
     }
   }
+
   localStorage.setItem('ci_apiKey', apiKey);
   btn.textContent = 'Connected ✓';
-  setTimeout(async () => { closeSettings(); btn.textContent = 'Connect JSONBin'; btn.disabled = false; await loadFromBin(); }, 1000);
+  setTimeout(async () => { closeSettings(); btn.textContent = 'Connect JSONBin'; btn.disabled = false; await loadFromBin(); }, 1200);
 }
 function loadSettingsFromStorage() {
   binId = localStorage.getItem('ci_binId') || '';
