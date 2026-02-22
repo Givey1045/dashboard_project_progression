@@ -1147,7 +1147,7 @@ async function saveSettings() {
   // Step 1: Verify key works by fetching user bins list
   try {
     const testRes = await fetch('https://api.jsonbin.io/v3/b?sortBy=createdAt&sortOrder=desc', {
-      headers: { 'X-Access-Key': apiKey }
+      headers: { 'X-Master-Key': apiKey }
     });
     if (!testRes.ok) {
       const errData = await testRes.json().catch(() => ({}));
@@ -1169,7 +1169,7 @@ async function saveSettings() {
     try {
       const res = await fetch('https://api.jsonbin.io/v3/b', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Access-Key': apiKey, 'X-Bin-Name': 'Churn Intelligence' },
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey, 'X-Bin-Name': 'Churn Intelligence' },
         body: JSON.stringify({ completedTasks, ts: Date.now() })
       });
       const data = await res.json();
@@ -1218,7 +1218,7 @@ async function loadFromBin() {
   setSyncStatus('syncing');
   try {
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-      headers: { 'X-Access-Key': apiKey }
+      headers: { 'X-Master-Key': apiKey }
     });
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
@@ -1243,7 +1243,7 @@ async function saveToBin() {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'X-Access-Key': apiKey
+        'X-Master-Key': apiKey
       },
       body: JSON.stringify({ completedTasks, notes, lastUpdated: new Date().toISOString() })
     });
